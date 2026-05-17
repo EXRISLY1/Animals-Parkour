@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>🐄 Animals Parkour | Made With ❤️ by EXRISLY</title>
+    <meta name="description"
+        content="A high-speed animals parkour game where you leap across floating islands to reach the space. Made With ❤️ by EXRISLY.">
+    <meta name="keywords" content="parkour, cow, game, mobile, webgl, threejs">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐄</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- World scene (background, blurred in menu) -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Easter Egg DOM Overlay -->
+    <div id="big-cow-container"
+        style="position: absolute; display: none; pointer-events: none; z-index: 5; text-align: center; width: 250px;">
+        <div
+            style="color: #FFD700; font-family: 'Black Han Sans', sans-serif; font-size: 28px; text-shadow: 0 0 15px #ff8800, 2px 2px 0px #3d1a00; margin-bottom: 5px;">
+            BIG MAC MUSTO</div>
+        <img id="big-cow-img" src="inek.png" style="width: 100%; filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.5));" />
+    </div>
+
+    <!-- Transition overlay -->
+    <div id="screen-transition"
+        style="position:fixed;inset:0;background:#000;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.4s ease;">
+    </div>
+
+    <div id="ui">
+
+        <!-- ── MAIN MENU ─────────────────────────────────────── -->
+        <div id="main-menu" class="screen menu-screen">
+
+            <!-- Title at top -->
+            <div id="main-menu-logo" class="menu-logo">
+                <h1 class="menu-title">ANIMALS PARKOUR</h1>
+            </div>
+
+
+            <!-- Centered button area -->
+            <div class="menu-center">
+
+                <!-- Main nav -->
+                <div class="menu-nav" id="menu-nav-main">
+                    <button id="menu-play-btn" class="menu-pill menu-pill-play" data-i18n="start">▶ PLAY</button>
+                    <button id="menu-chars-btn" class="menu-pill" data-i18n="characters">🐾 CHARACTERS</button>
+                    <button id="menu-settings-btn" class="menu-pill" data-i18n="settings">⚙ SETTINGS</button>
+                    <button id="menu-info-btn" class="menu-pill" data-i18n="info">ℹ INFO</button>
+                </div>
+
+
+                <!-- Character Showcase panel (FULL SCREEN) -->
+                <div class="menu-nav hidden" id="menu-nav-chars" style="position: absolute; inset: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: all;">
+
+                    <!-- Particle canvas background for the showcase -->
+                    <canvas id="char-particles-canvas" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+
+                    <!-- Top bar: title + back -->
+                    <div style="position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:20px 30px;">
+                        <button id="menu-chars-back" class="cs-back-btn">← BACK</button>
+                        <div style="font-family:'Black Han Sans',sans-serif;font-size:22px;letter-spacing:6px;color:#fff;text-shadow:0 0 20px var(--primary);">🐾 SELECT CHARACTER</div>
+                        <div style="width:120px;"></div>
+                    </div>
+
+                    <!-- Center 3D viewport -->
+                    <div id="cs-viewport" style="position:relative;width:clamp(280px,40vw,540px);height:clamp(320px,55vh,620px);z-index:5;">
+                        <!-- Glow ring under character -->
+                        <div id="cs-ground-ring" style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);width:55%;height:22px;background:radial-gradient(ellipse,var(--primary) 0%,transparent 70%);opacity:0.45;filter:blur(6px);border-radius:50%;pointer-events:none;animation:csRingPulse 2s ease-in-out infinite;"></div>
+                        <!-- Dedicated 3D Canvas for character -->
+                        <canvas id="char-showcase-canvas" style="position:absolute;inset:0;width:100%;height:100%;outline:none;pointer-events:none;border-radius:20px;"></canvas>
+                        <!-- Left arrow -->
+                        <button id="char-prev" class="cs-arrow cs-arrow-left">&#8249;</button>
+                        <!-- Right arrow -->
+                        <button id="char-next" class="cs-arrow cs-arrow-right">&#8250;</button>
+                    </div>
+
+                    <!-- Character info panel -->
+                    <div id="cs-info-panel" style="z-index:10;text-align:center;padding:0 20px;">
+                        <div id="char-showcase-name" class="cs-char-name">🐄 COW</div>
+                        <div id="char-showcase-desc" class="cs-char-desc">Beyaz gövde, siyah benekler, pembe meme, altın çan</div>
+                        <div id="char-showcase-stats" style="display:flex;gap:24px;justify-content:center;margin:12px 0;"></div>
+                        <button id="char-select-btn" class="cs-select-btn">SELECT</button>
+                    </div>
+
+                    <!-- Thumbnail strip -->
+                    <div id="cs-thumb-strip" style="margin-top:24px; margin-bottom:12px; display:flex; gap:12px; z-index:20; flex-wrap:wrap; justify-content:center;"></div>
+                </div>
+
+                <!-- Map selection panel -->
+                <div class="menu-nav hidden" id="menu-nav-map">
+                    <div class="panel-title" data-i18n="map_title">SELECT MAP</div>
+                    <div class="map-card-grid">
+                        <button id="btn-map-classic" class="map-card" data-map="classic">
+                            <div class="map-card-icon">🌍</div>
+                            <div class="map-card-name" data-i18n="map_classic">CLASSIC</div>
+                            <div class="map-card-desc" data-i18n="map_classic_desc">Green islands &amp; nature</div>
+                        </button>
+                        <button id="btn-map-winter" class="map-card" data-map="winter">
+                            <div class="map-card-icon">❄️</div>
+                            <div class="map-card-name" data-i18n="map_winter">WINTER</div>
+                            <div class="map-card-desc" data-i18n="map_winter_desc">Icy &amp; slippery platforms</div>
+                        </button>
+                        <button id="btn-map-hell" class="map-card" data-map="hell">
+                            <div class="map-card-icon">🌋</div>
+                            <div class="map-card-name" data-i18n="map_hell">HELL</div>
+                            <div class="map-card-desc" data-i18n="map_hell_desc">Fire &amp; stone chaos</div>
+                        </button>
+                        <button id="btn-map-moon" class="map-card" data-map="moon">
+                            <div class="map-card-icon">🌕</div>
+                            <div class="map-card-name" data-i18n="map_moon">MOON</div>
+                            <div class="map-card-desc" data-i18n="map_moon_desc">Craters & low gravity</div>
+                        </button>
+                    </div>
+                    <button id="menu-map-back" class="menu-pill menu-pill-sm" data-i18n="back">← BACK</button>
+                </div>
+
+                <!-- Difficulty panel REMOVED - maps start game directly -->
+
+                <!-- Settings panel -->
+                <div class="menu-nav hidden" id="menu-nav-settings">
+                    <div class="panel-title" data-i18n="settings_title">⚙ SETTINGS</div>
+                    <div class="info-panel">
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="sfx_label">Sound Effects</span>
+                            <input type="checkbox" id="setting-sfx" class="setting-chk" checked>
+                        </label>
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="music_label">Music</span>
+                            <input type="checkbox" id="setting-music" class="setting-chk" checked>
+                        </label>
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="safe_mode_label">Safe Mode</span>
+                            <input type="checkbox" id="setting-safe" class="setting-chk">
+                        </label>
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="vol_label">Music Volume</span>
+                            <input type="range" id="setting-vol" class="setting-slider" min="0" max="100" value="50">
+                        </label>
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="sens_label">Sensitivity</span>
+                            <input type="range" id="setting-sens" class="setting-slider" min="10" max="200" value="100">
+                        </label>
+                        <label class="setting-row">
+                            <span class="setting-lbl" data-i18n="lang_label">Language</span>
+                            <select id="setting-lang" class="setting-select">
+                                <option value="en">English</option>
+                                <option value="tr">Türkçe</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button id="menu-settings-back" class="menu-pill menu-pill-sm" data-i18n="back">← BACK</button>
+                </div>
+
+                <!-- Info panel -->
+                <div class="menu-nav hidden" id="menu-nav-info">
+                    <div class="panel-title" data-i18n="info_title">ℹ INFO &amp; CODES</div>
+                    <div class="info-panel">
+                        <div class="key-row"><span class="key">W A S D</span><span data-i18n="key_move">Move</span>
+                        </div>
+                        <div class="key-row"><span class="key">SPACE</span><span data-i18n="key_jump">Jump
+                                (double)</span></div>
+                        <div class="key-row"><span class="key">SHIFT</span><span data-i18n="key_sprint">Sprint /
+                                Dash</span></div>
+                        <div class="key-row"><span class="key">RIGHT CLICK</span><span
+                                data-i18n="key_camera">Camera</span></div>
+                        <div class="key-row"><span class="key">ESC</span><span data-i18n="key_pause">Pause</span></div>
+                        <div class="key-row"><span class="key">M</span><span data-i18n="key_sound">Animal sound</span>
+                        </div>
+                        <div class="info-divider" data-i18n="codes_title">❖ SECRET CODES ❖</div>
+                        <div class="key-row"><span class="key key-code">GOD</span><span
+                                data-i18n="code_god">Invincibility</span></div>
+                        <div class="key-row"><span class="key key-code">RGB</span><span data-i18n="code_rgb">Rainbow
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">BIG</span><span data-i18n="code_big_spots">Show
+                                Big Spots</span></div>
+                        <div class="key-row"><span class="key key-code">↑↑↓↓←→←→</span><span
+                                data-i18n="code_giant">Become Giant</span></div>
+                        <div class="key-row"><span class="key key-code">END</span><span data-i18n="code_end">Skip to
+                                End</span></div>
+                        <div class="key-row"><span class="key key-code">ISO</span><span data-i18n="code_iso">Pig
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">COW</span><span data-i18n="code_cow">Cow
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">DOG</span><span data-i18n="code_dog">Dog
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">SHP</span><span data-i18n="code_shp">Sheep
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">RAB</span><span data-i18n="code_rab">Rabbit
+                                Mode</span></div>
+                        <div class="key-row"><span class="key key-code">GRF</span><span data-i18n="code_grf">Giraffe
+                                Mode</span></div>
+                    </div>
+                    <button id="menu-info-back" class="menu-pill menu-pill-sm" data-i18n="back">← BACK</button>
+                </div>
+
+
+            </div>
+
+        </div>
+
+        <!-- ── HUD ─────────────────────────────────────────── -->
+        <div id="hud" class="hidden">
+            <div id="hud-top">
+                <div class="hud-pill" id="score-display">&#127780; <span id="score-val">0m</span></div>
+                <div class="hud-pill" id="timer-display">&#9201; <span id="timer-val">0.0s</span></div>
+            </div>
+            <div id="crosshair">+</div>
+        </div>
+
+        <!-- ── MOBILE CONTROLS ─────────────────────────────────────────── -->
+        <div id="mobile-controls">
+            <!-- Sol: Joystick -->
+            <div id="mobile-joystick-zone">
+                <div id="mobile-joystick-base">
+                    <div id="mobile-joystick-stick"></div>
+                </div>
+            </div>
+
+            <div id="mobile-actions">
+                <button class="action-btn sound-btn" data-key="KeyM">🔊</button>
+                <button class="action-btn sprint-btn" data-key="ShiftLeft">⚡</button>
+                <button class="action-btn jump-btn" data-key="Space">▲</button>
+            </div>
+
+            <button id="btn-mobile-pause">⏸ MENU</button>
+        </div>
+
+        <!-- ── DEATH ───────────────────────────────────────── -->
+        <div id="death-screen" class="screen hidden">
+            <div class="logo">
+                <div class="cow-emoji">&#128128;</div>
+                <h1 data-i18n="fell">YOU FELL!</h1>
+                <p class="subtitle" data-i18n="respawning">Respawning...</p>
+            </div>
+        </div>
+
+        <!-- ── WIN ─────────────────────────────────────────── -->
+        <div id="win-screen" class="screen hidden">
+            <div id="win-confetti" aria-hidden="true"></div>
+            <div class="logo">
+                <div class="cow-emoji">&#127942;</div>
+                <h1 data-i18n="level_clear">LEVEL CLEAR!</h1>
+                <p id="win-stats" class="subtitle"></p>
+            </div>
+            <button id="next-btn" class="btn" data-i18n="next_level">NEXT LEVEL</button>
+            <button id="home-btn" class="btn btn-outline" data-i18n="home">HOME</button>
+        </div>
+
+        <!-- ── PAUSE ───────────────────────────────────────── -->
+        <div id="pause-screen" class="screen menu-screen hidden">
+            <div id="pause-main" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                <div class="menu-logo">
+                    <h1 class="menu-title">ANIMALS PARKOUR</h1>
+                </div>
+
+                <div class="menu-center">
+                    <div class="menu-nav">
+                        <button id="resume-btn" class="menu-pill" data-i18n="resume">RESUME</button>
+                        <button id="pause-settings-btn" class="menu-pill" data-i18n="settings">⚙ SETTINGS</button>
+                        <button id="menu-btn" class="menu-pill" data-i18n="main_menu">MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pause-settings" class="hidden"
+                style="display:flex;flex-direction:column;align-items:center;width:100%;">
+                <div class="menu-logo">
+                    <h1 class="menu-title" data-i18n="settings_title" style="font-size: 32px;">SETTINGS</h1>
+                </div>
+                <div class="info-panel" style="background:rgba(0,0,0,0.8); padding: 20px;">
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="sfx_label">Sound Effects</span>
+                        <input type="checkbox" id="pause-setting-sfx" class="setting-chk" checked>
+                    </label>
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="music_label">Music</span>
+                        <input type="checkbox" id="pause-setting-music" class="setting-chk" checked>
+                    </label>
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="safe_mode_label">Safe Mode</span>
+                        <input type="checkbox" id="pause-setting-safe" class="setting-chk">
+                    </label>
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="vol_label">Music Volume</span>
+                        <input type="range" id="pause-setting-vol" class="setting-slider" min="0" max="100" value="50">
+                    </label>
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="sens_label">Sensitivity</span>
+                        <input type="range" id="pause-setting-sens" class="setting-slider" min="10" max="200"
+                            value="100">
+                    </label>
+                    <label class="setting-row">
+                        <span class="setting-lbl" data-i18n="lang_label">Language</span>
+                        <select id="pause-setting-lang" class="setting-select">
+                            <option value="en">English</option>
+                            <option value="tr">Türkçe</option>
+                        </select>
+                    </label>
+                </div>
+                <button id="pause-settings-back" class="btn" data-i18n="back">← BACK</button>
+            </div>
+        </div>
+
+
+        <!-- Global footer branding -->
+        <div id="global-branding" class="branding branding-footer">Made With ❤️ by EXRISLY</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/characters.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/obstacles.js"></script>
+    <script src="js/graphics.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/world.js"></script>
+    <script src="main.js"></script>
+
+    <!-- Particle generator for menu -->
+    <script>
+      (function () {
+
+        // Win screen confetti
+        const conf = document.getElementById('win-confetti');
+        if (conf) {
+          const colors = ['#ffd700','#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#fd79a8'];
+          for (let i = 0; i < 30; i++) {
+            const c = document.createElement('div');
+            c.className = 'confetti-piece';
+            c.style.cssText = `left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};animation-delay:${Math.random()*3}s;animation-duration:${Math.random()*2+2}s;width:${Math.random()*10+4}px;height:${Math.random()*10+4}px;`;
+            conf.appendChild(c);
+          }
+        }
+      })();
+    </script>
+</body>
+
+</html>
